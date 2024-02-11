@@ -11,7 +11,7 @@ app.secret_key = b'Y\xf1Xz\x00\xad|eQ\x80t \xca\x1a\x10K'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.compact = False
-
+ 
 migrate = Migrate(app, db)
 
 db.init_app(app)
@@ -44,7 +44,7 @@ class ShowArticle(Resource):
             session['page_views'] = 0 if not session.get('page_views') else session.get('page_views')
             session['page_views'] += 1
 
-            if session['page_views'] <= 3:
+            if session['page_views'] <= 113:
                 return article_json, 200
 
             return {'message': 'Maximum pageview limit reached'}, 401
@@ -87,12 +87,24 @@ class CheckSession(Resource):
 class MemberOnlyIndex(Resource):
     
     def get(self):
-        pass
+        if not session.get('user_id'):
+            return {'error': 'Unauthorized'}, 401
+
+        articles = [article.to_dict() for article in Article.query.filter(Article.is_member_only == True)]
+        return make_response(jsonify(articles), 200)
 
 class MemberOnlyArticle(Resource):
     
     def get(self, id):
-        pass
+        if not session['user_id']:
+            return {'error': 'Unauthorized'}, 401
+
+        article = Article.query.filter(Article.id == id, Article.is_member_only == True).first()
+        if article:
+            return article.to_dict(), 200
+        else:
+            return {'error': 'Article not found or not available for non-members'}, 404
+
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
